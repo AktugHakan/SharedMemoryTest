@@ -1,32 +1,18 @@
 #include <stdio.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <string.h>
-
 #include "config.h"
-
-#define MESSAGE "Hello, world!\n"
+#include "shm_lib/shmlib.h"
 
 int main()
 {
-    // Get a unique key from project id and path name
-    key_t key = ftok("shared_mem", PROJ_ID);
+    ipc_data *shared_obj = connect_shared_memory(SHM_FILE_PATH, PROJ_ID);
 
-    // Allocate SystemV shared memory segment
-    // IPC_CREAT is used to create a new memory segment
-    int shared_memory_id = shmget(key, 512, 0666 | IPC_CREAT);
+    // Write begins
+    (*shared_obj).locked = LOCKED; // prevent race conditions
+    scanf("%s", (*shared_obj).message);
+    // Write complete
+    (*shared_obj).locked = UNLOCKED;
 
-    // Attach itself to shared memory
-    char *str = (char*) shmat(shared_memory_id, NULL, 0);
-
-    // Write to shared memory
-    strcpy(str, MESSAGE);
-
-    // Wait for key press
-    scanf("%*c");
-
-    // Detach itself from shared memory (shared memory still exists after detach)
-    shmdt(str);
-
+    disconnect_shared_memory();
     return 0;
 }
+

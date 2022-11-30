@@ -1,24 +1,27 @@
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <string.h>
 #include <stdio.h>
 #include "config.h"
+#include "shm_lib/shmlib.h"
+
+// for sleep function
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 
 int main()
 {
-    // Same steps when creating the shared memory
-    key_t key = ftok("shared_mem", PROJ_ID);
-    int shared_memory_id = shmget(key, 512, 0666 | IPC_CREAT);
-    char *buff = (char*) shmat(shared_memory_id, NULL, 0);
+    ipc_data* shared_memory = connect_shared_memory(SHM_FILE_PATH, PROJ_ID);
+    
+    printf("Connected and waiting for other program to write...\n");
 
-    // Read data from shared memory
-    printf("DATA: %s", buff);
+    while((*shared_memory).locked)
+    {
+        sleep(1);
+        printf("Still waiting...\n");
+    }
 
-    // Detach itself from shared memory (shared memory still exists after detach)
-    shmdt(buff);
-
-    // Remove the shared memory to prevent memory leaks
-    shmctl(shared_memory_id, IPC_RMID, NULL);
+    printf("Message is: %s\n", (*shared_memory).message);
 
     return 0;
 }
